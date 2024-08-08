@@ -13,6 +13,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 @Service
 public class MapService {
@@ -24,7 +25,7 @@ public class MapService {
 
     private final int height;
 
-    private final int[] colors;
+    private final AtomicIntegerArray atomicColors;
 
     private boolean isChanged;
 
@@ -45,7 +46,8 @@ public class MapService {
         }
         width = tmp.getWidth();
         height = tmp.getHeight();
-        colors = tmp.getColors();
+        var colors = tmp.getColors();
+        atomicColors = new AtomicIntegerArray(colors);
     }
 
     /**
@@ -54,13 +56,14 @@ public class MapService {
      * @param pixel
      * @return
      */
-    public synchronized boolean draw(PixelRequest pixel) {
+    public boolean draw(PixelRequest pixel) {
         int x = pixel.getX();
         int y = pixel.getY();
         if (x < 0 || x >= width || y < 0 || y >= height) {
             return false;
         }
-        colors[y * width + x] = pixel.getColor();
+        int index = y * width + x;
+        atomicColors.set(index, pixel.getColor());
         isChanged = true;
         return true;
     }
@@ -70,8 +73,12 @@ public class MapService {
      *
      * @return
      */
-    private synchronized int[] getColors() {
-        return Arrays.copyOf(colors, colors.length);
+    private int[] getColors() {
+        int[] colors = new int[width * height];
+        for (int i = 0; i < colors.length; i++) {
+            colors[i] = atomicColors.get(i);
+        }
+        return colors;
     }
 
     public Map getMap() {
