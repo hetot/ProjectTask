@@ -17,9 +17,9 @@ import java.util.concurrent.*;
 public class TestCase {
     private final static Logger logger = LoggerFactory.getLogger(TestCase.class);
 
-    private static final int THREAD_COUNT = 100;
+    private static final int THREAD_COUNT = 200;
 
-    private static final int REQUEST_COUNT = 100;
+    private static final int REQUEST_COUNT = 1000;
 
     public static final String URL = "http://127.0.0.1:8080/drawPixel";
 

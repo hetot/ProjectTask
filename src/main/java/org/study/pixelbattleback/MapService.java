@@ -13,6 +13,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 public class MapService {
@@ -25,6 +27,7 @@ public class MapService {
     private final int height;
 
     private final int[] colors;
+    private final ReentrantReadWriteLock[] locks;
 
     private boolean isChanged;
 
@@ -46,6 +49,7 @@ public class MapService {
         width = tmp.getWidth();
         height = tmp.getHeight();
         colors = tmp.getColors();
+        locks = new ReentrantReadWriteLock[width * height];
     }
 
     /**
@@ -54,13 +58,17 @@ public class MapService {
      * @param pixel
      * @return
      */
-    public synchronized boolean draw(PixelRequest pixel) {
+    public boolean draw(PixelRequest pixel) {
         int x = pixel.getX();
         int y = pixel.getY();
         if (x < 0 || x >= width || y < 0 || y >= height) {
             return false;
         }
-        colors[y * width + x] = pixel.getColor();
+        var index = y * width + x;
+        Lock lock = getWriteLock(index);
+        lock.lock();
+        colors[index] = pixel.getColor();
+        lock.unlock();
         isChanged = true;
         return true;
     }
@@ -70,8 +78,23 @@ public class MapService {
      *
      * @return
      */
-    private synchronized int[] getColors() {
-        return Arrays.copyOf(colors, colors.length);
+    private int[] getColors() {
+        lockWriting();
+        var result = Arrays.copyOf(colors, colors.length);
+        unlockWriting();
+        return result;
+    }
+
+    private void lockWriting() {
+        for (int i = 0; i < locks.length; i++) {
+            getReadLock(i).lock();
+        }
+    }
+
+    private void unlockWriting() {
+        for (int i = 0; i < locks.length; i++) {
+            getReadLock(i).unlock();
+        }
     }
 
     public Map getMap() {
@@ -80,6 +103,20 @@ public class MapService {
         mapObj.setWidth(width);
         mapObj.setHeight(height);
         return mapObj;
+    }
+
+    private ReentrantReadWriteLock.WriteLock getWriteLock(int index) {
+        if (locks[index] == null) {
+            locks[index] = new ReentrantReadWriteLock();
+        }
+        return locks[index].writeLock();
+    }
+
+    private ReentrantReadWriteLock.ReadLock getReadLock(int index) {
+        if (locks[index] == null) {
+            locks[index] = new ReentrantReadWriteLock();
+        }
+        return locks[index].readLock();
     }
 
     /**

@@ -104,7 +104,7 @@ function updateState(res){
 }
 
 function sendPixel(x,y, color){
-  postAjax('/drawPixel', {x: x, y: y, color: color.pack()}, function(response){
+  postAjax('http://localhost:8080/drawPixel', {x: x, y: y, color: color.pack()}, function(response){
     updateState(response);
   });
 }
@@ -145,7 +145,7 @@ animationLoop();
 
 
 function loadState(){
-  getAjax('/load', function(response){
+  getAjax('http://localhost:8080/load', function(response){
     updateState(response);
   })
 }
